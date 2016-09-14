@@ -9,25 +9,59 @@ import state as st
 import state_manager
 import stats as stat
 
-from keras.layers import Convolution2D,  Flatten,  Dense,  Input,  Activation
-from keras.models import Sequential
-from keras.optimizers import sgd
+from keras.layers import merge,  Convolution2D,  Flatten,  Dense,  Input,  Activation
+from keras.models import Sequential,  Model
+from keras.optimizers import RMSprop
+from rl.agents import DDPGAgent
+from rl.memory import SequentialMemory
+from rl.random import OrnsteinUhlenbeckProcess
+
 
 memory = 10
-
-def build_network(sm):
-    model = Sequential()
-    model.add(Dense(128, input_shape=(8*memory, )))
-    model.add(Activation('relu'))
-    model.add(Dense(128))
-    model.add(Activation('softmax'))
-    #model.add(Dropout(0.2))
-
-    model.add(Dense(9)) # button index, analog x analog y
-    #model.add(Activation('relu')) 
-    model.compile(loss='mse', optimizer=sgd(lr=.2))
-    return model
+nb_actions = 9
+def build_network(env,  nb_actions):
+#    model = Sequential()
+#    model.add(Dense(128, input_shape=(8*memory, )))
+#    model.add(Activation('relu'))
+#    model.add(Dense(128))
+#    model.add(Activation('softmax'))
+#    #model.add(Dropout(0.2))
+#
+#    model.add(Dense(9)) # button index, analog x analog y
+#    #model.add(Activation('relu')) 
+#    model.compile(loss='mse', optimizer=sgd(lr=.2))
+#    
+    actor = Sequential()
+    actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    actor.add(Dense(16))
+    actor.add(Activation('relu'))
+    actor.add(Dense(16))
+    actor.add(Activation('relu'))
+    actor.add(Dense(16))
+    actor.add(Activation('relu'))
+    actor.add(Dense(9))
+    actor.add(Activation('linear'))
+    print(actor.summary())
+    return actor
     
+    
+def build_critic(env,  nb_actions):
+    action_input = Input(shape=(nb_actions,), name='action_input')
+    observation_input = Input(shape=(1,) + env.observation_space.shape, name='observation_input')
+    flattened_observation = Flatten()(observation_input)
+    x = merge([action_input, flattened_observation], mode='concat')
+    x = Dense(32)(x)
+    x = Activation('relu')(x)
+    x = Dense(32)(x)
+    x = Activation('relu')(x)
+    x = Dense(32)(x)
+    x = Activation('relu')(x)
+    x = Dense(1)(x)
+    x = Activation('linear')(x)
+    critic = Model(input=[action_input, observation_input], output=x)
+    print(critic.summary())
+    return critic,  action_input
+
 def find_dolphin_dir():
     """Attempts to find the dolphin user directory. None on failure."""
     candidates = ['~/.dolphin-emu', '~/.local/share/.dolphin-emu']
@@ -49,7 +83,19 @@ def write_locations(dolphin_dir, locations):
             return
 
 def run(state, sm, mw, pad, stats):
-    model = build_network(sm)
+    actor = build_network()
+    critic,  action_input = build_critic()
+    memory = SequentialMemory(limit=100000)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3)
+    agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
+                      memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                      random_process=random_process, gamma=.99, target_model_update=1e-3,
+                      delta_range=(-10., 10.))
+    agent.compile([RMSprop(lr=.001), RMSprop(lr=.001)], metrics=['mae'])
+    
+    
+    
+    
     fox = f.Fox()
     print("fox")
     mm = menu_manager.MenuManager()
@@ -62,7 +108,7 @@ def run(state, sm, mw, pad, stats):
         if state.frame > last_frame:
             stats.add_frames(state.frame - last_frame)
             start = time.time()
-            make_action(state, pad, mm, fox,  model)
+            make_action(state, pad, mm, fox,  agent)
             stats.add_thinking_time(time.time() - start)
             #print ("action")
 
