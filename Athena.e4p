@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-5.1.dtd">
+<!-- eric project file for project Athena -->
+<!-- Saved: 2016-09-12, 09:37:15 -->
+<!-- Copyright (C) 2016 ,  -->
+<Project version="5.1">
+  <Language>en</Language>
+  <Hash>2b2c3cb1584f882ac1e7fe6ec157ecffafaf62bb</Hash>
+  <ProgLanguage mixed="0">Python3</ProgLanguage>
+  <ProjectType>Console</ProjectType>
+  <Description></Description>
+  <Version>0.1</Version>
+  <Author></Author>
+  <Email></Email>
+  <Eol index="-1"/>
+  <Sources>
+    <Source>__init__.py</Source>
+    <Source>__main__.py</Source>
+    <Source>fox.py</Source>
+    <Source>memory_watcher_test.py</Source>
+    <Source>memory_watcher.py</Source>
+    <Source>menu_manager_test.py</Source>
+    <Source>menu_manager.py</Source>
+    <Source>p3.py</Source>
+    <Source>pad_test.py</Source>
+    <Source>pad.py</Source>
+    <Source>state_manager_test.py</Source>
+    <Source>state_manager.py</Source>
+    <Source>state.py</Source>
+    <Source>stats.py</Source>
+  </Sources>
+  <Forms/>
+  <Translations/>
+  <Resources/>
+  <Interfaces/>
+  <Others/>
+  <MainScript>p3.py</MainScript>
+  <Vcs>
+    <VcsType>None</VcsType>
+  </Vcs>
+  <FiletypeAssociations>
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES"/>
+    <FiletypeAssociation pattern="*.ptl" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.py" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw" type="SOURCES"/>
+  </FiletypeAssociations>
+</Project>
