@@ -1,21 +1,19 @@
 import os.path
-import time
-
-import fox as f
 import memory_watcher
 import menu_manager
 import pad as p
 import state as st
 import state_manager
 import stats as stat
-
+import random 
+import game_env
 from keras.layers import merge,  Convolution2D,  Flatten,  Dense,  Input,  Activation
 from keras.models import Sequential,  Model
 from keras.optimizers import RMSprop
 from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
-
+import sys, os
 
 memory = 10
 nb_actions = 9
@@ -30,9 +28,8 @@ def build_network(env,  nb_actions):
 #    model.add(Dense(9)) # button index, analog x analog y
 #    #model.add(Activation('relu')) 
 #    model.compile(loss='mse', optimizer=sgd(lr=.2))
-#    
     actor = Sequential()
-    actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    actor.add(Flatten(input_shape=(1, ) + env.observation_space.shape))
     actor.add(Dense(16))
     actor.add(Activation('relu'))
     actor.add(Dense(16))
@@ -47,7 +44,7 @@ def build_network(env,  nb_actions):
     
 def build_critic(env,  nb_actions):
     action_input = Input(shape=(nb_actions,), name='action_input')
-    observation_input = Input(shape=(1,) + env.observation_space.shape, name='observation_input')
+    observation_input = Input(shape=(1, ) + env.observation_space.shape, name='observation_input')
     flattened_observation = Flatten()(observation_input)
     x = merge([action_input, flattened_observation], mode='concat')
     x = Dense(32)(x)
@@ -82,35 +79,42 @@ def write_locations(dolphin_dir, locations):
             print('Could not detect dolphin directory.')
             return
 
-def run(state, sm, mw, pad, stats):
-    actor = build_network()
-    critic,  action_input = build_critic()
+def run():
+    env = game_env.MeleeEnv()
+    actor = build_network(env,  nb_actions)
+    critic,  action_input = build_critic(env,  nb_actions)
     memory = SequentialMemory(limit=100000)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3,  size=nb_actions)
     agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
                       memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                       random_process=random_process, gamma=.99, target_model_update=1e-3,
                       delta_range=(-10., 10.))
     agent.compile([RMSprop(lr=.001), RMSprop(lr=.001)], metrics=['mae'])
     
+    agent.fit(env, nb_steps=1000000, visualize=True, verbose=1, nb_max_episode_steps=200000)
+    # After training is done, we save the final weights.
+    agent.save_weights('ddpg_{}_weights.h5f'.format(str(random.randrange(0, 100000))), overwrite=True)
+
+    # Finally, evaluate our algorithm for 5 episodes.
+    #agent.test(env, nb_episodes=5, visualize=True, nb_max_episode_steps=200)
     
     
     
-    fox = f.Fox()
-    print("fox")
-    mm = menu_manager.MenuManager()
-    while True:
-        last_frame = state.frame
-        res = next(mw)
-        if res is not None:
-            sm.handle(*res)
-           # print (res)
-        if state.frame > last_frame:
-            stats.add_frames(state.frame - last_frame)
-            start = time.time()
-            make_action(state, pad, mm, fox,  agent)
-            stats.add_thinking_time(time.time() - start)
-            #print ("action")
+    
+#    print("fox")
+#    mm = menu_manager.MenuManager()
+#    while True:
+#        last_frame = state.frame
+#        res = next(mw)
+#        if res is not None:
+#            sm.handle(*res)
+#           # print (res)
+#        if state.frame > last_frame:
+#            stats.add_frames(state.frame - last_frame)
+#            start = time.time()
+#            make_action(state, pad, mm, fox,  agent)
+#            stats.add_thinking_time(time.time() - start)
+#            #print ("action")
 
 def make_action(state, pad, mm, fox,  model):
     if state.menu == st.Menu.Game:
@@ -124,27 +128,28 @@ def make_action(state, pad, mm, fox,  model):
         mm.press_start_lots(state, pad)
 
 def main():
-    dolphin_dir = find_dolphin_dir()
-    if dolphin_dir is None:
-        print('Could not find dolphin config dir.')
-        return
-
-    state = st.State()
-    sm = state_manager.StateManager(state)
-    write_locations(dolphin_dir, sm.locations())
-
-    stats = stat.Stats()
-
-    try:
-        print('Start dolphin now. Press ^C to stop ')
-        
-        Popen(["dolphin-emu", "--movie=/home/sci/workspace/Athena/falcon.dtm",  "--exec=/home/sci/Downloads/Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso"])
-        mw = memory_watcher.MemoryWatcher(dolphin_dir + '/MemoryWatcher/MemoryWatcher')
-        pad = p.Pad(dolphin_dir + '/Pipes/p3')
-        run(state, sm, mw, pad, stats)
-    except KeyboardInterrupt:
-        print('Stopped')
-        print(stats)
+    run()
+#    dolphin_dir = find_dolphin_dir()
+#    if dolphin_dir is None:
+#        print('Could not find dolphin config dir.')
+#        return
+#
+#    state = st.State()
+#    sm = state_manager.StateManager(state)
+#    write_locations(dolphin_dir, sm.locations())
+#
+#    stats = stat.Stats()
+#
+#    try:
+#        print('Start dolphin now. Press ^C to stop ')
+#        
+#        Popen(["dolphin-emu", "--movie=/home/sci/workspace/Athena/falcon.dtm",  "--exec=/home/sci/Downloads/Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso"])
+#        mw = memory_watcher.MemoryWatcher(dolphin_dir + '/MemoryWatcher/MemoryWatcher')
+#        pad = p.Pad(dolphin_dir + '/Pipes/p3')
+#        run()
+#    except KeyboardInterrupt:
+#        print('Stopped')
+#        print(stats)
 from subprocess import Popen
 if __name__ == '__main__':
     os.system("killall -s KILL dolphin-emu")
