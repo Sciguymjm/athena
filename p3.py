@@ -7,13 +7,14 @@ import state_manager
 import stats as stat
 import random 
 import game_env
-from keras.layers import merge,  Convolution2D,  Flatten,  Dense,  Input,  Activation
+from keras.layers import merge,  Reshape, Convolution2D,  Flatten,  Dense,  Input,  Activation
 from keras.models import Sequential,  Model
 from keras.optimizers import RMSprop
-from rl.agents import DDPGAgent
+from rl.agents import DDPGAgent,  DQNAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
 import sys, os
+import numpy as np
 memory = 10
 def build_network(env,  nb_actions):
 #    model = Sequential()
@@ -27,8 +28,8 @@ def build_network(env,  nb_actions):
 #    #model.add(Activation('relu')) 
 #    model.compile(loss='mse', optimizer=sgd(lr=.2))
     actor = Sequential()
-    actor.add(Flatten(input_shape=(1, 1, ) + env.observation_space.shape))
-    actor.add(Dense(128))
+    actor.add(Reshape((env.observation_space.shape[0], ), input_shape=(1, env.observation_space.shape[0], )))
+    actor.add(Dense(128, input_shape=(env.observation_space.shape[0], )))
     actor.add(Activation('softplus'))
     actor.add(Dense(128))
     actor.add(Activation('softplus'))
@@ -73,20 +74,31 @@ def write_locations(dolphin_dir, locations):
             print('Could not detect dolphin directory.')
             return
 
+class Process:
+    def process_state_batch(self,  x):
+        return np.array(x[0])
+    def process_observation(self,  x):
+        return x
+    def process_action(self,  x):
+        return x
+    def process_reward(self,  x):
+        return x
+
+
 def run():
     env = game_env.MeleeEnv()
     nb_actions = env.action_space.shape[0]
     actor = build_network(env, nb_actions)
     critic,  action_input = build_critic(env,nb_actions)
-    memory = SequentialMemory(limit=300)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3,  size=nb_actions)
-    agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
-                      memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                      random_process=random_process, gamma=.95, target_model_update=1e-1)#,
+    memory = SequentialMemory(limit=25000)
+    #random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3,  size=nb_actions)
+    agent = DQNAgent(batch_size=1000, nb_actions=nb_actions, model=actor, #processor=Process(), #window_length=4,#critic_action_input=action_input,
+                      memory=memory, nb_steps_warmup=100)# nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                      #random_process=random_process, gamma=.95, target_model_update=1e-1)#,
                       ##delta_range=(-10., 10.))
-    agent.compile([RMSprop(lr=.05), RMSprop(lr=.05)], metrics=['mae'])
+    agent.compile(RMSprop(lr=.0005), metrics=['mae'])
     
-    agent.fit(env, nb_steps=1000000, visualize=True, verbose=0, nb_max_episode_steps=1000000)
+    agent.fit(env, nb_steps=100000, visualize=True, verbose=1, nb_max_start_steps=100,  start_step_policy=lambda x: np.random.randint(nb_actions))
     # After training is done, we save the final weights.
     agent.save_weights('ddpg_{}_weights.h5f'.format(str(random.randrange(0, 100000))), overwrite=True)
 

@@ -97,10 +97,11 @@ class MeleeEnv(Env):
         stickCombos = itertools.product(sticks,  repeat=2)
 
         self.action_space = np.array([[x,  y[0],  y[1]] for y in stickCombos for x in self.buttons ])
-        print (self.action_space)
+        #print (self.action_space)
     def send_controller(self,  action):
-            button,  analog_x,  analog_y = self.action_space[np.argmax(action)]
-            print (button,  analog_x,  analog_y)
+            button,  analog_x,  analog_y = self.action_space[action]
+            print (action)
+            #print (button,  analog_x,  analog_y)
             if not self.buttonStates[button]:
                 if button == Button.NA or button is None:
                     for b in self.buttons:
@@ -156,7 +157,7 @@ class MeleeEnv(Env):
         
             self.send_controller(action)
             self.previous = copy.deepcopy(self.state)
-            print("done with frame")
+            #print("done with frame")
             while self.action_list:
                 wait, func, args = self.action_list[0]
                 if self.state.frame - self.last_action < wait:
@@ -177,8 +178,9 @@ class MeleeEnv(Env):
         reward = self.get_reward(self.state,  self.previous)
 
         
-        print ("action",  action)
+        #print ("action",  action)
         #print("Final",  self.previous,  self.state,  self.get_data(self.state), reward)
+        #print (self.get_data(copy.deepcopy(self.state)).shape)
         return self.get_data(copy.deepcopy(self.state)), reward, False, {}
 
     def stall(self,  action):
@@ -231,7 +233,9 @@ class MeleeEnv(Env):
 #                self.sm.handle(*res)
 #               # print (res)
 #        print(vars(self))
-        return self.get_data(self.state)
+        self.stall(0)
+        d3 = self.get_data(copy.deepcopy(self.state))
+        return d3
 
 
     def get_data(self,  data):
@@ -240,7 +244,7 @@ class MeleeEnv(Env):
         d = []
         for them in [enemy, me]:
             [d.append(v) for v in [them.jumps_used,  them.attack_vel_x,  them.attack_vel_y,  them.self_air_vel_x,  them.self_air_vel_y,  them.shield_size,  them.facing,  them.action_state,  them.percent,  them.pos_x,  them.pos_y]]
-        return np.array([d])
+        return np.array(d).flatten()
 
     def get_reward(self,  state,  prev):
         if prev is None:
