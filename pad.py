@@ -15,6 +15,7 @@ class Button(enum.Enum):
     D_DOWN = 9
     D_LEFT = 10
     D_RIGHT = 11
+    NA = 12
 
 @enum.unique
 class Trigger(enum.Enum):

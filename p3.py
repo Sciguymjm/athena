@@ -14,9 +14,7 @@ from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
 import sys, os
-
 memory = 10
-nb_actions = 9
 def build_network(env,  nb_actions):
 #    model = Sequential()
 #    model.add(Dense(128, input_shape=(8*memory, )))
@@ -29,30 +27,26 @@ def build_network(env,  nb_actions):
 #    #model.add(Activation('relu')) 
 #    model.compile(loss='mse', optimizer=sgd(lr=.2))
     actor = Sequential()
-    actor.add(Flatten(input_shape=(1, ) + env.observation_space.shape))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(9))
-    actor.add(Activation('linear'))
+    actor.add(Flatten(input_shape=(1, 1, ) + env.observation_space.shape))
+    actor.add(Dense(128))
+    actor.add(Activation('softplus'))
+    actor.add(Dense(128))
+    actor.add(Activation('softplus'))
+    actor.add(Dense(nb_actions))
+    actor.add(Activation('softmax'))
     print(actor.summary())
     return actor
     
     
 def build_critic(env,  nb_actions):
     action_input = Input(shape=(nb_actions,), name='action_input')
-    observation_input = Input(shape=(1, ) + env.observation_space.shape, name='observation_input')
+    observation_input = Input(shape=(1,  1,  ) + env.observation_space.shape, name='observation_input')
     flattened_observation = Flatten()(observation_input)
     x = merge([action_input, flattened_observation], mode='concat')
-    x = Dense(32)(x)
-    x = Activation('relu')(x)
-    x = Dense(32)(x)
-    x = Activation('relu')(x)
-    x = Dense(32)(x)
-    x = Activation('relu')(x)
+    x = Dense(128)(x)
+    x = Activation('softplus')(x)
+    x = Dense(128)(x)
+    x = Activation('softplus')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
     critic = Model(input=[action_input, observation_input], output=x)
@@ -81,17 +75,18 @@ def write_locations(dolphin_dir, locations):
 
 def run():
     env = game_env.MeleeEnv()
-    actor = build_network(env,  nb_actions)
-    critic,  action_input = build_critic(env,  nb_actions)
-    memory = SequentialMemory(limit=100000)
+    nb_actions = env.action_space.shape[0]
+    actor = build_network(env, nb_actions)
+    critic,  action_input = build_critic(env,nb_actions)
+    memory = SequentialMemory(limit=300)
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3,  size=nb_actions)
     agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
                       memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                      random_process=random_process, gamma=.99, target_model_update=1e-3,
-                      delta_range=(-10., 10.))
-    agent.compile([RMSprop(lr=.001), RMSprop(lr=.001)], metrics=['mae'])
+                      random_process=random_process, gamma=.95, target_model_update=1e-1)#,
+                      ##delta_range=(-10., 10.))
+    agent.compile([RMSprop(lr=.05), RMSprop(lr=.05)], metrics=['mae'])
     
-    agent.fit(env, nb_steps=1000000, visualize=True, verbose=1, nb_max_episode_steps=200000)
+    agent.fit(env, nb_steps=1000000, visualize=True, verbose=0, nb_max_episode_steps=1000000)
     # After training is done, we save the final weights.
     agent.save_weights('ddpg_{}_weights.h5f'.format(str(random.randrange(0, 100000))), overwrite=True)
 

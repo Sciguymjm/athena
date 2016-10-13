@@ -97,7 +97,7 @@ class StateManager:
             self.addresses[data_pointer + ' 19BC'] = float_handler(player, 'hitlag')
             self.addresses[data_pointer + ' 19C8'] = int_handler(player, 'jumps_used', 0, 0xFF)
             self.addresses[data_pointer + ' 19EC'] = int_handler(player, 'body_state', 0, 0xFF)# BodyState, BodyState.Normal)
-
+            self.addresses[data_pointer + ' 19F8'] = float_handler(player,  'shield_size')
 
     def handle(self, address, value):
         """Convert the raw address and value into changes in the State."""

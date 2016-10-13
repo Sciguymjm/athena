@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project Athena -->
-<!-- Saved: 2016-09-14, 20:20:22 -->
+<!-- Saved: 2016-09-15, 14:24:39 -->
 <!-- Copyright (C) 2016 ,  -->
 <Project version="5.1">
   <Language>en</Language>
@@ -29,6 +29,7 @@
     <Source>state.py</Source>
     <Source>stats.py</Source>
     <Source>game_env.py</Source>
+    <Source>tests.py</Source>
   </Sources>
   <Forms/>
   <Translations/>

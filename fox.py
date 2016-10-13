@@ -4,7 +4,12 @@ import numpy as np
 import random
 import copy
 from p3 import memory
+import itertools
 buttons = [Button.A,  Button.B,  Button.X,  None]
+sticks = np.linspace(0, 1, 3)
+stickCombos = itertools.product(sticks,  repeat=2)
+controllerStates = np.array(itertools.product(buttons,  stickCombos))
+
 def get_reward(state,  prev):
     reward = 0.0
     them = state.players[0] # 1st
